@@ -49,6 +49,8 @@ class EngineHandler(private val scope: CoroutineScope) {
         val visionBackendStr: String? = call.argument("visionBackend")
         val audioBackendStr: String? = call.argument("audioBackend")
         val cacheDir: String? = call.argument("cacheDir")
+        cacheDir?.let { java.io.File(it).mkdirs() }
+
         val maxNumTokens: Int? = call.argument("maxNumTokens")
 
         scope.launch {
