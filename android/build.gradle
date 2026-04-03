@@ -1,0 +1,54 @@
+group 'dev.colymba.flutter_litert_lm'
+version '1.0'
+
+buildscript {
+    ext.kotlin_version = '1.9.22'
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        classpath 'com.android.tools.build:gradle:8.2.2'
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+    }
+}
+
+rootProject.allprojects {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+apply plugin: 'com.android.library'
+apply plugin: 'kotlin-android'
+
+android {
+    compileSdk 35
+
+    namespace 'dev.colymba.flutter_litert_lm'
+
+    defaultConfig {
+        minSdk 26
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    kotlinOptions {
+        jvmTarget = '1.8'
+    }
+}
+
+dependencies {
+    // Flutter engine will be provided by the consuming app.
+    compileOnly 'io.flutter:flutter_embedding_debug:1.0.0-3240f2c'
+
+    // LiteRT-LM Android SDK — includes native .so for arm64-v8a and x86_64.
+    implementation 'com.google.ai.edge.litertlm:litertlm-android:latest.release'
+
+    // Kotlin coroutines for offloading blocking engine calls.
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3'
+}
