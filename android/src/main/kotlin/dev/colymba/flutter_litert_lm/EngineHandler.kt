@@ -62,7 +62,9 @@ class EngineHandler(private val scope: CoroutineScope) {
                         cacheDir = cacheDir,
                         maxNumTokens = maxNumTokens,
                     )
-                    Engine.createEngine(config)
+                    val engine = Engine(config)
+                    engine.initialize()
+                    engine
                 }
 
                 val engineId = "engine_${counter.incrementAndGet()}"

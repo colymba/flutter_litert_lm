@@ -5,6 +5,7 @@ import com.google.ai.edge.litertlm.Contents
 import com.google.ai.edge.litertlm.Conversation
 import com.google.ai.edge.litertlm.ConversationConfig
 import com.google.ai.edge.litertlm.Engine
+import com.google.ai.edge.litertlm.Message
 import com.google.ai.edge.litertlm.MessageCallback
 import com.google.ai.edge.litertlm.SamplerConfig
 import io.flutter.plugin.common.BinaryMessenger
@@ -79,20 +80,25 @@ class ConversationHandler(
         scope.launch {
             try {
                 val conversation = withContext(Dispatchers.IO) {
-                    val configBuilder = ConversationConfig.Builder()
+                    val samplerConfig = SamplerConfig(
+                        topK = topK ?: 40,
+                        topP = topP ?: 0.95,
+                        temperature = temperature ?: 0.8,
+                        seed = 0
+                    )
 
-                    systemInstruction?.let { configBuilder.setSystemInstruction(it) }
+                    val config = if (systemInstruction != null) {
+                        ConversationConfig(
+                            systemInstruction = Contents.of(systemInstruction),
+                            samplerConfig = samplerConfig
+                        )
+                    } else {
+                        ConversationConfig(
+                            samplerConfig = samplerConfig
+                        )
+                    }
 
-                    val samplerConfig = SamplerConfig.Builder().apply {
-                        topK?.let { setTopK(it) }
-                        topP?.let { setTopP(it.toFloat()) }
-                        temperature?.let { setTemperature(it.toFloat()) }
-                    }.build()
-                    configBuilder.setSamplerConfig(samplerConfig)
-
-                    maxOutputTokens?.let { configBuilder.setMaxOutputTokens(it) }
-
-                    engine.createConversation(configBuilder.build())
+                    engine.createConversation(config)
                 }
 
                 val conversationId = "conversation_${counter.incrementAndGet()}"
@@ -128,7 +134,7 @@ class ConversationHandler(
                 val responseText = withContext(Dispatchers.IO) {
                     val contents = buildContents(partsArg!!)
                     val message = entry.conversation.sendMessage(contents)
-                    message.text
+                    message.contents.contents.filterIsInstance<Content.Text>().joinToString("") { it.text }
                 }
                 result.success(responseText)
             } catch (e: Exception) {
@@ -166,15 +172,14 @@ class ConversationHandler(
                             entry.conversation.sendMessageAsync(
                                 contents,
                                 object : MessageCallback {
-                                    override fun onPartialResponse(chunk: String) {
-                                        // MessageCallback runs on a background thread;
-                                        // post to main thread for EventSink safety.
+                                    override fun onMessage(message: Message) {
+                                        val chunk = message.contents.contents.filterIsInstance<Content.Text>().joinToString("") { it.text }
                                         scope.launch(Dispatchers.Main) {
                                             events.success(chunk)
                                         }
                                     }
 
-                                    override fun onCompleteResponse(fullResponse: String) {
+                                    override fun onDone() {
                                         scope.launch(Dispatchers.Main) {
                                             events.endOfStream()
                                             cleanupStreamChannel(conversationId)
