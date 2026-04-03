@@ -21,7 +21,7 @@ import java.util.concurrent.atomic.AtomicInteger
 /**
  * ConversationHandler
  *
- * Handles all `conversation/*` MethodChannel calls.
+ * Handles all `conversation/...` MethodChannel calls.
  *
  * Conversations are identified by a string ID returned to Dart. Streaming
  * responses are delivered via a dynamically-registered [EventChannel] whose

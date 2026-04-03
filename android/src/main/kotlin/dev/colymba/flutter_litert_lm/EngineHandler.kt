@@ -15,7 +15,7 @@ import java.util.concurrent.atomic.AtomicInteger
 /**
  * EngineHandler
  *
- * Handles all `engine/*` MethodChannel calls.
+ * Handles all `engine/...` MethodChannel calls.
  *
  * Engine instances are identified by a string ID returned to Dart. Dart passes
  * this ID back for `createConversation` and `engine/close`.
