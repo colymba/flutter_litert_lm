@@ -376,10 +376,13 @@ class LiteRtMessageResponse {
     final toolCalls = rawCalls
         .cast<Map<Object?, Object?>>()
         .map(
-          (c) => LiteRtToolCall(
-            name: c['name'] as String,
-            argumentsJson: c['argumentsJson'] as String,
-          ),
+          (c) {
+            final args = c['argumentsJson'];
+            return LiteRtToolCall(
+              name: c['name'] as String,
+              argumentsJson: args is String ? args : jsonEncode(args),
+            );
+          },
         )
         .toList(growable: false);
     return LiteRtMessageResponse(text: text, toolCalls: toolCalls);
