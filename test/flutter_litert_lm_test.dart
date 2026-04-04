@@ -121,19 +121,30 @@ void main() {
         LiteRtContent.imageBytes(Uint8List(0)),
         const LiteRtContent.audioFile('/audio.wav'),
         LiteRtContent.audioBytes(Uint8List(0)),
+        const LiteRtContent.toolResponse('myTool', '{"result":1}'),
       ];
 
       final types = parts.map((p) => switch (p) {
-            LiteRtTextContent()       => 'text',
-            LiteRtImageFileContent()  => 'imageFile',
-            LiteRtImageBytesContent() => 'imageBytes',
-            LiteRtAudioFileContent()  => 'audioFile',
-            LiteRtAudioBytesContent() => 'audioBytes',
+            LiteRtTextContent()         => 'text',
+            LiteRtImageFileContent()    => 'imageFile',
+            LiteRtImageBytesContent()   => 'imageBytes',
+            LiteRtAudioFileContent()    => 'audioFile',
+            LiteRtAudioBytesContent()   => 'audioBytes',
+            LiteRtToolResponseContent() => 'toolResponse',
           }).toList();
 
       expect(types, [
-        'text', 'imageFile', 'imageBytes', 'audioFile', 'audioBytes'
+        'text', 'imageFile', 'imageBytes', 'audioFile', 'audioBytes', 'toolResponse',
       ]);
+    });
+
+    test('toolResponse serialises correctly', () {
+      const content = LiteRtContent.toolResponse('weather', '{"temp":22}');
+      expect(content.toMap(), {
+        'type': 'toolResponse',
+        'toolName': 'weather',
+        'responseJson': '{"temp":22}',
+      });
     });
   });
 
@@ -184,6 +195,112 @@ void main() {
     test('toString includes code when present', () {
       const e = LiteRtLmException('failed', code: 'ENGINE_INIT_FAILED');
       expect(e.toString(), contains('ENGINE_INIT_FAILED'));
+    });
+  });
+
+  // ──────────────────────────────────────────────────────────────────────
+  // LiteRtToolDeclaration
+  // ──────────────────────────────────────────────────────────────────────
+
+  group('LiteRtToolDeclaration', () {
+    test('toOpenApiJson encodes correct structure', () {
+      const decl = LiteRtToolDeclaration(
+        name: 'getCurrentWeather',
+        description: 'Get weather for a city.',
+        parameters: {
+          'type': 'object',
+          'properties': {
+            'city': {'type': 'string'},
+          },
+          'required': ['city'],
+        },
+      );
+      final json = decl.toOpenApiJson();
+      expect(json, contains('getCurrentWeather'));
+      expect(json, contains('Get weather for a city.'));
+      expect(json, contains('city'));
+    });
+
+    test('toMap includes parametersJson key', () {
+      const decl = LiteRtToolDeclaration(
+        name: 'add',
+        description: 'Add numbers.',
+        parameters: {'type': 'object', 'properties': {}},
+      );
+      final map = decl.toMap();
+      expect(map['name'], 'add');
+      expect(map['description'], 'Add numbers.');
+      expect(map.containsKey('parametersJson'), isTrue);
+    });
+  });
+
+  // ──────────────────────────────────────────────────────────────────────
+  // LiteRtToolCall
+  // ──────────────────────────────────────────────────────────────────────
+
+  group('LiteRtToolCall', () {
+    test('arguments getter decodes JSON', () {
+      const call = LiteRtToolCall(
+        name: 'getCurrentWeather',
+        argumentsJson: '{"city":"London","unit":"celsius"}',
+      );
+      expect(call.arguments['city'], 'London');
+      expect(call.arguments['unit'], 'celsius');
+    });
+  });
+
+  // ──────────────────────────────────────────────────────────────────────
+  // LiteRtMessageResponse
+  // ──────────────────────────────────────────────────────────────────────
+
+  group('LiteRtMessageResponse', () {
+    test('fromMap decodes text-only response', () {
+      final response = LiteRtMessageResponse.fromMap({
+        'text': 'Paris',
+        'toolCalls': <Object?>[],
+      });
+      expect(response.text, 'Paris');
+      expect(response.hasToolCalls, isFalse);
+    });
+
+    test('fromMap decodes tool-call response', () {
+      final response = LiteRtMessageResponse.fromMap({
+        'text': '',
+        'toolCalls': [
+          {'name': 'getCurrentWeather', 'argumentsJson': '{"city":"London"}'},
+        ],
+      });
+      expect(response.hasToolCalls, isTrue);
+      expect(response.toolCalls.first.name, 'getCurrentWeather');
+      expect(response.toolCalls.first.arguments['city'], 'London');
+    });
+  });
+
+  // ──────────────────────────────────────────────────────────────────────
+  // ConversationConfig with tools
+  // ──────────────────────────────────────────────────────────────────────
+
+  group('ConversationConfig (tools)', () {
+    test('toMap includes tools and automaticToolCalling=false when tools provided', () {
+      final config = const ConversationConfig(
+        tools: [
+          LiteRtToolDeclaration(
+            name: 'getDate',
+            description: 'Get current date.',
+            parameters: {'type': 'object', 'properties': {}},
+          ),
+        ],
+      );
+      final map = config.toMap();
+      expect(map.containsKey('tools'), isTrue);
+      expect((map['tools'] as List).length, 1);
+      expect(map['automaticToolCalling'], isFalse);
+    });
+
+    test('toMap does not include tools when list is empty', () {
+      const config = ConversationConfig();
+      expect(config.toMap().containsKey('tools'), isFalse);
+      expect(config.toMap().containsKey('automaticToolCalling'), isFalse);
     });
   });
 }

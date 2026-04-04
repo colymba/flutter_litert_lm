@@ -10,6 +10,25 @@ import 'models.dart';
 /// may share the same underlying engine.
 ///
 /// Obtain an instance via [LiteRtLmEngine.createConversation].
+///
+/// ## Tool calling
+///
+/// If the engine was created with tools registered in [ConversationConfig], the
+/// model may respond with [LiteRtMessageResponse.hasToolCalls] == `true` instead
+/// of producing a text answer. In that case:
+///
+/// ```dart
+/// final res = await conversation.sendText('What is the weather in London?');
+/// if (res.hasToolCalls) {
+///   final toolResponses = res.toolCalls.map((call) {
+///     final args = call.arguments; // Map<String, dynamic>
+///     final result = myExecuteTool(call.name, args);
+///     return LiteRtContent.toolResponse(call.name, jsonEncode(result));
+///   }).toList();
+///   final finalResponse = await conversation.sendToolResponses(toolResponses);
+///   print(finalResponse.text);
+/// }
+/// ```
 class LiteRtLmConversation {
   final String _conversationId;
   final MethodChannel _channel;
@@ -26,19 +45,19 @@ class LiteRtLmConversation {
   ///
   /// For text-only messages, prefer [sendText] as a convenience shorthand.
   ///
-  /// Returns the model's text response.
+  /// Returns a [LiteRtMessageResponse] with the model's text and/or tool calls.
   /// Throws [LiteRtLmException] on failure.
-  Future<String> sendMessage(List<LiteRtContent> parts) async {
+  Future<LiteRtMessageResponse> sendMessage(List<LiteRtContent> parts) async {
     _assertOpen();
     try {
-      final result = await _channel.invokeMethod<String>(
+      final result = await _channel.invokeMethod(
         'conversation/sendMessage',
         {
           'conversationId': _conversationId,
           'parts': parts.map((p) => p.toMap()).toList(),
         },
-      );
-      return result ?? '';
+      ) as Map<Object?, Object?>;
+      return LiteRtMessageResponse.fromMap(result);
     } on PlatformException catch (e) {
       throw LiteRtLmException(
         e.message ?? 'sendMessage failed',
@@ -49,7 +68,7 @@ class LiteRtLmConversation {
   }
 
   /// Convenience method: sends a plain text message and waits for the response.
-  Future<String> sendText(String text) =>
+  Future<LiteRtMessageResponse> sendText(String text) =>
       sendMessage([LiteRtContent.text(text)]);
 
   // ──────────────────────────────────────────
@@ -58,24 +77,30 @@ class LiteRtLmConversation {
 
   /// Sends a multimodal [message] and streams the response token-by-token.
   ///
-  /// The returned [Stream] emits text chunks as they are generated.  The
-  /// stream closes normally when generation completes and emits an error if
-  /// the native layer reports one.
+  /// The returned [Stream] emits text-chunk [LiteRtMessageResponse] objects as
+  /// the model generates them. Each intermediate event has an empty [toolCalls]
+  /// list. If the model finishes with tool calls instead of — or after — text,
+  /// the final event in the stream will have [LiteRtMessageResponse.hasToolCalls]
+  /// == `true`.
   ///
   /// Only one streaming request may be active per conversation at a time.
   /// Call [cancel] to abort an ongoing stream.
   ///
   /// ```dart
-  /// await for (final chunk in conversation.sendMessageStream([
+  /// await for (final event in conversation.sendMessageStream([
   ///   LiteRtContent.imageFile('/path/to/photo.jpg'),
   ///   LiteRtContent.text('What is in this image?'),
   /// ])) {
-  ///   print(chunk);
+  ///   if (event.hasToolCalls) {
+  ///     // handle tool calls
+  ///   } else {
+  ///     print(event.text);
+  ///   }
   /// }
   /// ```
-  Stream<String> sendMessageStream(List<LiteRtContent> parts) {
+  Stream<LiteRtMessageResponse> sendMessageStream(List<LiteRtContent> parts) {
     _assertOpen();
-    final controller = StreamController<String>();
+    final controller = StreamController<LiteRtMessageResponse>();
 
     Future<void> startStream() async {
       try {
@@ -93,8 +118,30 @@ class LiteRtLmConversation {
         final eventChannel = EventChannel(streamChannelName!);
         final subscription = eventChannel.receiveBroadcastStream().listen(
           (event) {
-            if (!controller.isClosed) {
-              controller.add(event as String);
+            if (controller.isClosed) return;
+            // Text-chunk events are plain Strings.
+            // Tool-call terminal events are Maps with '_type' == 'toolCalls'.
+            if (event is String) {
+              controller.add(
+                LiteRtMessageResponse(text: event, toolCalls: const []),
+              );
+            } else if (event is Map) {
+              final type = event['_type'] as String?;
+              if (type == 'toolCalls') {
+                final rawCalls = event['calls'] as List<Object?>? ?? const [];
+                final toolCalls = rawCalls
+                    .cast<Map<Object?, Object?>>()
+                    .map(
+                      (c) => LiteRtToolCall(
+                        name: c['name'] as String,
+                        argumentsJson: c['argumentsJson'] as String,
+                      ),
+                    )
+                    .toList(growable: false);
+                controller.add(
+                  LiteRtMessageResponse(text: '', toolCalls: toolCalls),
+                );
+              }
             }
           },
           onError: (Object error) {
@@ -126,9 +173,48 @@ class LiteRtLmConversation {
   }
 
   /// Convenience method: streams the response to a plain text message.
-  Stream<String> sendTextStream(String text) =>
+  Stream<LiteRtMessageResponse> sendTextStream(String text) =>
       sendMessageStream([LiteRtContent.text(text)]);
 
+  // ──────────────────────────────────────────
+  // Tool responses
+  // ──────────────────────────────────────────
+
+  /// Sends tool-execution results back to the model and waits for its final
+  /// answer.
+  ///
+  /// Call this after receiving a [LiteRtMessageResponse] with
+  /// [LiteRtMessageResponse.hasToolCalls] == `true`. Build each element of
+  /// [toolResponseParts] using [LiteRtContent.toolResponse].
+  ///
+  /// ```dart
+  /// final finalResponse = await conversation.sendToolResponses([
+  ///   LiteRtContent.toolResponse('getCurrentWeather', jsonEncode({'temp': 22})),
+  /// ]);
+  /// print(finalResponse.text);
+  /// ```
+  Future<LiteRtMessageResponse> sendToolResponses(
+    List<LiteRtContent> toolResponseParts,
+  ) async {
+    _assertOpen();
+    try {
+      final result = await _channel.invokeMethod(
+        'conversation/sendMessage',
+        {
+          'conversationId': _conversationId,
+          'role': 'tool',
+          'parts': toolResponseParts.map((p) => p.toMap()).toList(),
+        },
+      ) as Map<Object?, Object?>;
+      return LiteRtMessageResponse.fromMap(result);
+    } on PlatformException catch (e) {
+      throw LiteRtLmException(
+        e.message ?? 'sendToolResponses failed',
+        code: e.code,
+        details: e.details,
+      );
+    }
+  }
   // ──────────────────────────────────────────
   // Cancel
   // ──────────────────────────────────────────

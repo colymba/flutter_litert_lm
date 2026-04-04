@@ -56,4 +56,8 @@ export 'src/models.dart'
         LiteRtImageFileContent,
         LiteRtLmException,
         LiteRtMessage,
-        LiteRtTextContent;
+        LiteRtMessageResponse,
+        LiteRtTextContent,
+        LiteRtToolCall,
+        LiteRtToolDeclaration,
+        LiteRtToolResponseContent;
