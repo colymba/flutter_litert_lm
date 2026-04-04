@@ -209,7 +209,10 @@ class ConversationHandler(
                             entry.conversation.sendMessageAsync(
                                 contents,
                                 object : MessageCallback {
+                                    private var lastMessage: Message? = null
+                                    
                                     override fun onMessage(message: Message) {
+                                        lastMessage = message
                                         val chunk = message.contents.contents
                                             .filterIsInstance<Content.Text>()
                                             .joinToString("") { it.text }
@@ -218,10 +221,11 @@ class ConversationHandler(
                                         }
                                     }
 
-                                    override fun onDone(message: Message) {
+                                    override fun onDone() {
                                         scope.launch(Dispatchers.Main) {
-                                            // Emit terminal tool-call event if present.
-                                            if (message.toolCalls.isNotEmpty()) {
+                                            // Emit terminal tool-call event if present in the last received message.
+                                            val message = lastMessage
+                                            if (message != null && message.toolCalls.isNotEmpty()) {
                                                 val calls = message.toolCalls.map { tc ->
                                                     mapOf(
                                                         "name" to tc.name,
@@ -233,7 +237,6 @@ class ConversationHandler(
                                                 )
                                             }
                                             events.endOfStream()
-                                            cleanupStreamChannel(conversationId)
                                         }
                                     }
 
@@ -244,7 +247,6 @@ class ConversationHandler(
                                                 error.message ?: "Streaming error",
                                                 null
                                             )
-                                            cleanupStreamChannel(conversationId)
                                         }
                                     }
                                 }
@@ -253,7 +255,6 @@ class ConversationHandler(
                     } catch (e: Exception) {
                         scope.launch(Dispatchers.Main) {
                             events.error("STREAM_START_FAILED", e.message, null)
-                            cleanupStreamChannel(conversationId)
                         }
                     }
                 }
