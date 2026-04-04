@@ -1,10 +1,11 @@
 name: flutter_litert_lm
 description: >-
   A Flutter plugin for on-device LLM inference using Google's LiteRT-LM
-  framework. Provides a high-level Conversation API with support for text and
-  multimodal (image/audio) inputs. Android is fully supported via the official
-  Kotlin SDK. iOS support will be added when the Swift SDK is available.
-version: 0.1.0
+  framework. Provides a high-level Conversation API with support for text,
+  multimodal (image/audio) inputs, and tool calling. Android is fully supported
+  via the official Kotlin SDK. iOS support will be added when the Swift SDK is
+  available.
+version: 0.2.0
 homepage: https://github.com/colymba/flutter_litert_lm
 
 environment:
