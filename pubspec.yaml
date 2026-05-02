@@ -5,7 +5,7 @@ description: >-
   multimodal (image/audio) inputs, and tool calling. Android is fully supported
   via the official Kotlin SDK. iOS support will be added when the Swift SDK is
   available.
-version: 0.2.0
+version: 0.2.1
 homepage: https://github.com/colymba/flutter_litert_lm
 
 environment:

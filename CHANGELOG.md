@@ -1,3 +1,7 @@
+## 0.2.1
+
+* Re-verified native dependencies. Android uses Gradle latest.release for litertlm-android.
+
 ## 0.2.0
 
 * **Tool calling support** — register Dart-defined tools on a conversation and let the
