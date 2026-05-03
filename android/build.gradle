@@ -44,7 +44,6 @@ android {
 
 dependencies {
     // Flutter engine will be provided by the consuming app.
-    compileOnly 'io.flutter:flutter_embedding_debug:1.0.0-3240f2c'
 
     // LiteRT-LM Android SDK — includes native .so for arm64-v8a and x86_64.
     implementation 'com.google.ai.edge.litertlm:litertlm-android:latest.release'
