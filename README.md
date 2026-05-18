@@ -1,4 +1,4 @@
-# flutter_litert_lm
+# ai_edge_litert_lm
 
 A Flutter plugin for on-device LLM inference using Google's [LiteRT-LM](https://github.com/google-ai-edge/LiteRT-LM) framework.
 
@@ -41,7 +41,7 @@ The `litertlm-android` dependency is pulled automatically from Google Maven via 
 ### 1. Initialize the engine
 
 ```dart
-import 'package:flutter_litert_lm/flutter_litert_lm.dart';
+import 'package:ai_edge_litert_lm/ai_edge_litert_lm.dart';
 
 final engine = LiteRtLmEngine();
 

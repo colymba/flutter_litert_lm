@@ -1,3 +1,8 @@
+## 0.2.2
+
+* Renamed package to `ai_edge_litert_lm`.
+* Initial release on pub.dev.
+
 ## 0.2.1
 
 * Re-verified native dependencies. Android uses Gradle latest.release for litertlm-android.

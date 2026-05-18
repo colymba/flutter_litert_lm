@@ -7,7 +7,7 @@
 /// ## Quick start
 ///
 /// ```dart
-/// import 'package:flutter_litert_lm/flutter_litert_lm.dart';
+/// import 'package:ai_edge_litert_lm/ai_edge_litert_lm.dart';
 ///
 /// // 1. Create and initialise the engine (heavyweight — do once on startup)
 /// final engine = LiteRtLmEngine();
