@@ -48,6 +48,14 @@ dependencies {
     // LiteRT-LM Android SDK — includes native .so for arm64-v8a and x86_64.
     implementation 'com.google.ai.edge.litertlm:litertlm-android:latest.release'
 
+    // LiteRT interpreter — runs embedding encoder models (.tflite) for the
+    // embedder API. Independent from the litertlm generation runtime.
+    implementation 'com.google.ai.edge.litert:litert:latest.release'
+
+    // Sentencepiece tokenizer (DJL) for embedding models such as
+    // EmbeddingGemma. Used by EmbedderHandler.
+    implementation 'ai.djl.sentencepiece:sentencepiece:0.30.0'
+
     // Kotlin coroutines for offloading blocking engine calls.
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3'
 }

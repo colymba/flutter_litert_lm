@@ -1,3 +1,21 @@
+## 0.3.0
+
+* **Text embeddings (Android)** — new `LiteRtLmEmbedder` runs embedding encoder
+  models (e.g. EmbeddingGemma `.tflite`) on the LiteRT interpreter with DJL
+  sentencepiece tokenization, independent from the generation engine.
+* New `EmbedderConfig` — model path, tokenizer path, backend, L2-normalization.
+* New channel methods `embedder/initialize`, `embedder/embed`,
+  `embedder/embedBatch`, `embedder/close`; `EmbedderHandler` on Android.
+* `LiteRtLmEmbedder.documentPrefix` / `queryPrefix` constants for
+  EmbeddingGemma task prompts.
+* Android: added `com.google.ai.edge.litert:litert` and
+  `ai.djl.sentencepiece:sentencepiece` dependencies.
+* iOS: `embedder/*` calls return `NOT_SUPPORTED` (the Swift SDK does not
+  include the LiteRT interpreter yet).
+* Docs: README/pubspec updated to reflect that iOS *generation* support via
+  the official LiteRT-LM Swift SDK is already included (was still described
+  as a stub).
+
 ## 0.2.2
 
 * Renamed package to `ai_edge_litert_lm`.

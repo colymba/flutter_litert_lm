@@ -5,7 +5,7 @@ A Flutter plugin for on-device LLM inference using Google's [LiteRT-LM](https://
 | Platform | Status |
 |---|---|
 | Android | ✅ Supported via official `litertlm-android` Kotlin SDK |
-| iOS | 🚧 Stub — pending official Swift SDK |
+| iOS | ✅ Supported via official LiteRT-LM Swift SDK (Swift Package Manager; embedder API not yet available) |
 
 ---
 
@@ -17,6 +17,7 @@ A Flutter plugin for on-device LLM inference using Google's [LiteRT-LM](https://
 - **Tool calling** — register Dart functions the model can invoke; intercept calls and feed results back.
 - **Configurable backends** — CPU, GPU, or NPU.
 - **Multiple concurrent engines and conversations** — manage model lifecycle explicitly.
+- **Text embeddings** *(Android)* — run embedding encoder models such as [EmbeddingGemma](https://huggingface.co/litert-community/embeddinggemma-300m) on the LiteRT interpreter via `LiteRtLmEmbedder`, independent from the generation engine.
 
 ---
 
@@ -305,8 +306,62 @@ try {
 
 ---
 
+## Text embeddings (Android)
+
+`LiteRtLmEmbedder` runs an embedding encoder `.tflite` model (e.g.
+[EmbeddingGemma-300m](https://huggingface.co/litert-community/embeddinggemma-300m))
+directly on the LiteRT interpreter with sentencepiece tokenization. It is
+independent from `LiteRtLmEngine` — you can compute embeddings without
+loading a generation model.
+
+```dart
+final embedder = LiteRtLmEmbedder();
+await embedder.initialize(EmbedderConfig(
+  modelPath: '/path/to/embeddinggemma-300m_seq256.tflite',
+  tokenizerPath: '/path/to/sentencepiece.model',
+));
+
+// Index documents / notes:
+final docVector = await embedder.embed(
+  'Some note text to index.',
+  promptPrefix: LiteRtLmEmbedder.documentPrefix,
+);
+
+// Embed a search query:
+final queryVector = await embedder.embed(
+  'what did I write about sleep?',
+  promptPrefix: LiteRtLmEmbedder.queryPrefix,
+);
+
+// Batch indexing (e.g. chunks of a long document):
+final vectors = await embedder.embedBatch(chunks,
+    promptPrefix: LiteRtLmEmbedder.documentPrefix);
+
+await embedder.close();
+```
+
+Notes:
+
+- Vectors are L2-normalized by default (`EmbedderConfig.normalize`), so the
+  dot product of two vectors is their cosine similarity.
+- `maxSequenceLength` is fixed by the model variant (e.g. 256 tokens); chunk
+  longer texts yourself and embed per chunk.
+- EmbeddingGemma was trained with task prompts — use
+  `LiteRtLmEmbedder.documentPrefix` / `queryPrefix` for retrieval workloads.
+- The embedder API throws `NOT_SUPPORTED` on iOS for now (the LiteRT-LM
+  Swift SDK does not include the LiteRT interpreter).
+
+---
+
 ## iOS
 
-iOS is not yet supported. All calls will throw a `PlatformException` with code
-`NOT_SUPPORTED`. iOS support will be added when the official LiteRT-LM Swift
-SDK is available.
+iOS is supported via the official LiteRT-LM Swift SDK, consumed through
+Swift Package Manager (see `ios/ai_edge_litert_lm/Package.swift`). Enable
+SPM support in your Flutter app if you haven't already:
+
+```sh
+flutter config --enable-swift-package-manager
+```
+
+The embedder API (`LiteRtLmEmbedder`) is not yet available on iOS and throws
+a `PlatformException` with code `NOT_SUPPORTED`.

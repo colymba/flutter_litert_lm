@@ -43,6 +43,7 @@
 library;
 
 export 'src/litert_lm_conversation.dart' show LiteRtLmConversation;
+export 'src/litert_lm_embedder.dart' show EmbedderConfig, LiteRtLmEmbedder;
 export 'src/litert_lm_engine.dart' show LiteRtLmEngine;
 export 'src/models.dart'
     show

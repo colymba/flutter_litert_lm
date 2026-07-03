@@ -26,6 +26,7 @@ class FlutterLiteRtLmPlugin : FlutterPlugin, MethodCallHandler {
 
     private lateinit var engineHandler: EngineHandler
     private lateinit var conversationHandler: ConversationHandler
+    private lateinit var embedderHandler: EmbedderHandler
 
     // Coroutine scope for all plugin work. Cancelled on detach.
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
@@ -44,6 +45,7 @@ class FlutterLiteRtLmPlugin : FlutterPlugin, MethodCallHandler {
         conversationHandler = ConversationHandler(scope, messenger).also {
             it.engineHandler = engineHandler
         }
+        embedderHandler = EmbedderHandler(scope)
     }
 
     override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
@@ -52,6 +54,7 @@ class FlutterLiteRtLmPlugin : FlutterPlugin, MethodCallHandler {
         // Release all native resources on detach so the app doesn't leak.
         engineHandler.closeAll()
         conversationHandler.closeAll()
+        embedderHandler.closeAll()
 
         scope.cancel()
     }
@@ -67,6 +70,9 @@ class FlutterLiteRtLmPlugin : FlutterPlugin, MethodCallHandler {
 
             call.method.startsWith("conversation/") ->
                 conversationHandler.handle(call, result)
+
+            call.method.startsWith("embedder/") ->
+                embedderHandler.handle(call, result)
 
             else ->
                 result.notImplemented()

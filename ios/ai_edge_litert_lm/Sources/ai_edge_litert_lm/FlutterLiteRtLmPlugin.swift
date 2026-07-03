@@ -22,6 +22,14 @@ public class FlutterLiteRtLmPlugin: NSObject, FlutterPlugin {
             engineHandler.handle(call, result: result)
         } else if call.method.hasPrefix("conversation/") {
             conversationHandler.handle(call, result: result)
+        } else if call.method.hasPrefix("embedder/") {
+            // The embedder runs on the LiteRT interpreter, which is not part
+            // of the LiteRT-LM Swift SDK. Android-only for now.
+            result(FlutterError(
+                code: "NOT_SUPPORTED",
+                message: "The embedder API is not yet supported on iOS.",
+                details: nil
+            ))
         } else {
             result(FlutterMethodNotImplemented)
         }
